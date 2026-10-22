@@ -1,0 +1,9 @@
+node_modules/
+dist/
+.env
+# Written at run time
+.machine-id
+license.lic
+.DS_Store
+.idea/
+.vscode/

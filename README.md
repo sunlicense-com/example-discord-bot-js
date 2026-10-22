@@ -1,0 +1,77 @@
+# Discord bot (JavaScript) with SunLicense
+
+A working, copyable [discord.js](https://discord.js.org) bot with [SunLicense](https://sunlicense.com)
+built in: everyone who runs your bot needs a valid license key, leaked keys can be revoked or blocked,
+and your customers' bots keep running if SunLicense is ever unreachable.
+
+- discord.js 14 and the official [JavaScript SDK](https://github.com/sunlicense-com/sunlicense-js), Node.js 22+
+- License key from **.env**; your API key baked into the build buyers get, never into git
+- Clear console messages for every result (expired, revoked, too many machines, blacklisted, …), keys masked
+- Re-checked every few hours, so a revoke reaches running bots (the bot logs out)
+- **Offline fallback** with a signed license file (Ed25519, verified without network)
+- Tests against a stub server (`node --test`), CI on GitHub Actions, and [AGENTS.md](AGENTS.md) for AI coding assistants
+
+## 1. Set up SunLicense
+
+In the [dashboard](https://app.sunlicense.com):
+
+1. **Products → New product** (your bot), then a **policy**, e.g. "Standard", *1 machine*: a machine is
+   wherever the bot runs.
+2. **API keys → Create API key**. It can only validate licenses, so it's safe to ship with the bot.
+3. Optional, for the offline fallback: open any license and copy **Public key**.
+
+## 2. Make it yours
+
+1. Use this template (or copy the folder): `npm install`, then rename `my-discord-bot` in `package.json`
+   and `scripts/build.js`.
+2. Create a bot at [discord.com/developers](https://discord.com/developers/applications), copy
+   `.env.example` to `.env` and fill in `DISCORD_TOKEN` and a test `LICENSE_KEY`. While developing, also
+   put `SUNLICENSE_API_KEY=slk_...` (and `SUNLICENSE_PUBLIC_KEY`, or `SUNLICENSE_URL=http://localhost` for a
+   local stack) in `.env`. `.env` is git-ignored.
+3. Run it: `npm start`. Invite the bot to a test server and try `/license`.
+
+Your features go in `startFeatures()` in `src/index.js`, which runs only once the license is valid.
+
+## 3. Sell it
+
+```bash
+SUNLICENSE_API_KEY=slk_... SUNLICENSE_PUBLIC_KEY=MCowBQYDK2VwAyEA... npm run build
+```
+
+`dist/my-discord-bot/` is what buyers get: the code, `package-lock.json` and `sunlicense.json` with your
+settings. Zip it and upload it to your store. Buyers run `npm ci --omit=dev`, fill in `.env` and `npm start`.
+
+Sell on [BuiltByBit](https://docs.sunlicense.com/integrations/builtbybit), [Tebex](https://docs.sunlicense.com/integrations/tebex),
+[Gumroad](https://docs.sunlicense.com/integrations/gumroad), [Stripe](https://docs.sunlicense.com/integrations/stripe)
+or [your Discord server](https://docs.sunlicense.com/guide/discord): the buyer gets a key by email, on the
+redeem page or from the SunLicense Discord bot, and puts it in `.env`.
+
+## What happens when the bot starts
+
+| SunLicense answers | The bot |
+|---|---|
+| Valid | Logs in to Discord; logs the masked key |
+| Expired, revoked, suspended, unknown key, too many machines, blacklisted | Logs why (see `src/messages.js`), logs out and exits with code 1 |
+| Nothing (outage, network, rate limit) | Uses `license.lic` next to the bot if it's a valid offline license for this key; otherwise keeps running and retries every 10 minutes (`ALLOW_WHEN_UNREACHABLE = false` to wait instead) |
+
+Each machine keeps a random id in `.machine-id`, which is what counts against the policy's machine limit.
+
+Developing against your own license? Add an **exclusion** for your machine or IP in SunLicense
+([blacklists and exclusions](https://docs.sunlicense.com/guide/access-rules)) so test runs don't use up slots.
+
+## Files
+
+```
+src/index.js       start-up, re-checks, Discord login, your features
+src/license.js     online check → offline file → status (no Discord code, tested)
+src/offline.js     Ed25519 offline license file check
+src/messages.js    what the bot's owner reads; masking
+src/settings.js    SunLicense settings (sunlicense.json or env), the machine id
+scripts/build.js   the folder you sell, with your settings baked in
+test/              every result against a stub SunLicense
+.github/workflows/build.yml   CI
+```
+
+## Licence
+
+[MIT No Attribution](LICENSE): copy any of it into your bot, commercial or not, without credit.

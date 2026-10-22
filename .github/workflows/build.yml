@@ -1,0 +1,37 @@
+# Tests the bot on every push and pull request. For a release build with your SunLicense settings, add
+# repository secrets SUNLICENSE_API_KEY and SUNLICENSE_PUBLIC_KEY (Settings -> Secrets and variables ->
+# Actions); forks and PRs build without them.
+name: Build
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - name: Build the folder buyers get
+        env:
+          SUNLICENSE_API_KEY: ${{ secrets.SUNLICENSE_API_KEY }}
+          SUNLICENSE_PUBLIC_KEY: ${{ secrets.SUNLICENSE_PUBLIC_KEY }}
+        run: npm run build
+      # The build is your paid product: only keep it as a download when the repository is private.
+      - uses: actions/upload-artifact@v4
+        if: github.event.repository.private
+        with:
+          name: bot
+          path: dist/
+          if-no-files-found: error
+          retention-days: 14
