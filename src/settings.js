@@ -1,5 +1,6 @@
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { randomUUID } from 'node:crypto';
+import { join } from 'node:path';
 
 /**
  * SunLicense settings. `npm run build` writes them into dist/.../sunlicense.json from the SUNLICENSE_*
@@ -12,8 +13,15 @@ export function loadSettings(file) {
     url: built.url || process.env.SUNLICENSE_URL || 'https://api.sunlicense.com',
     apiKey: built.apiKey || process.env.SUNLICENSE_API_KEY || '',
     publicKey: built.publicKey || process.env.SUNLICENSE_PUBLIC_KEY || '',
+    ...OWNERSHIP,
   };
 }
+
+/**
+ * The ownership notice the bot logs at start-up: "<product> is licensed software by <owner>. License
+ * AX8P-XXXX-…". Edit these: they're your product's name, your name and (optional) a link to your terms.
+ */
+export const OWNERSHIP = { product: 'My Discord Bot', owner: 'You', terms: '' };
 
 /**
  * A random id for this machine, kept next to the bot, so restarts count as the same machine. Copying
@@ -27,4 +35,21 @@ export function machineId(file) {
   const id = `discord-bot-${randomUUID()}`;
   writeFileSync(file, id);
   return id;
+}
+
+/**
+ * The buyer's switch for anonymous usage statistics: ANALYTICS=false in .env turns them off
+ * (SUNLICENSE_ANALYTICS=off does too, for every SunLicense product on the machine).
+ */
+export function analyticsEnabled(env = process.env) {
+  return !['false', 'off', '0', 'no'].includes(String(env.ANALYTICS ?? 'true').trim().toLowerCase());
+}
+
+/** This bot's version, from package.json (sent with the usage statistics). */
+export function botVersion(root) {
+  try {
+    return JSON.parse(readFileSync(join(root, 'package.json'), 'utf8')).version;
+  } catch {
+    return null;
+  }
 }
